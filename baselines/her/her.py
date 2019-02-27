@@ -23,6 +23,7 @@ def train(*, policy, rollout_worker, evaluator,
           n_epochs, n_test_rollouts, n_cycles, n_batches, policy_save_interval,
           save_path, demo_file, **kwargs):
     rank = MPI.COMM_WORLD.Get_rank()
+    print('Number of epochs =', n_epochs)
 
     if save_path:
         latest_policy_path = os.path.join(save_path, 'policy_latest.pkl')
@@ -35,11 +36,12 @@ def train(*, policy, rollout_worker, evaluator,
     if policy.bc_loss == 1: policy.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
 
     # num_timesteps = n_epochs * n_cycles * rollout_length * number of rollout workers
-    for epoch in range(n_epochs):
+    for epoch in range(10):
         # train
         rollout_worker.clear_history()
         for _ in range(n_cycles):
             episode = rollout_worker.generate_rollouts()
+            print('Generated episdode', episode)
             policy.store_episode(episode)
             for _ in range(n_batches):
                 policy.train()

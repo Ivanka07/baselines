@@ -86,6 +86,7 @@ def train(args, extra_args):
 
 def build_env(args):
     ncpu = multiprocessing.cpu_count()
+    print('Number of cpu used', ncpu )
     if sys.platform == 'darwin': ncpu //= 2
     nenv = args.num_env or ncpu
     alg = args.alg
