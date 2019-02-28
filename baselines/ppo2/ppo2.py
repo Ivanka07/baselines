@@ -6,6 +6,10 @@ from baselines import logger
 from collections import deque
 from baselines.common import explained_variance, set_global_seeds
 from baselines.common.policies import build_policy
+from baselines.her.rollout import RolloutWorker
+import baselines.her.experiment.config as config
+
+
 try:
     from mpi4py import MPI
 except ImportError:
@@ -18,9 +22,9 @@ def constfn(val):
         return val
     return f
 
-def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2048, ent_coef=0.0, lr=3e-4,
+def learn(*, network='lstm', env, total_timesteps, eval_env = None, seed=None, nsteps=2048, ent_coef=0.0, lr=3e-4,
             vf_coef=0.5,  max_grad_norm=0.5, gamma=0.99, lam=0.95,
-            log_interval=10, nminibatches=4, noptepochs=10  , cliprange=0.2,
+            log_interval=1, nminibatches=4, noptepochs=1000  , cliprange=0.2,
             save_interval=0, load_path=None, model_fn=None, **network_kwargs):
     '''
     Learn policy using PPO algorithm (https://arxiv.org/abs/1707.06347)
@@ -84,12 +88,10 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
     if isinstance(cliprange, float): cliprange = constfn(cliprange)
     else: assert callable(cliprange)
     total_timesteps = int(total_timesteps)
-
     policy = build_policy(env, network, **network_kwargs)
 
     # Get the nb of env
     nenvs = env.num_envs
-
     # Get state_space and action_space
     ob_space = env.observation_space
     ac_space = env.action_space
@@ -97,6 +99,8 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
     # Calculate the batch_size
     nbatch = nenvs * nsteps
     nbatch_train = nbatch // nminibatches
+    eval_env = env
+    success_rate = 0
 
     # Instantiate the model object (that creates act_model and train_model)
     if model_fn is None:
@@ -112,7 +116,8 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
     # Instantiate the runner object
     runner = Runner(env=env, model=model, nsteps=nsteps, gamma=gamma, lam=lam)
     if eval_env is not None:
-        eval_runner = Runner(env = eval_env, model = model, nsteps = nsteps, gamma = gamma, lam= lam)
+        print('Created evaluation runner')
+        eval_runner = Runner(env = eval_env, model = model, nsteps = nsteps, gamma = gamma, lam= lam, evaluate=True)
 
     epinfobuf = deque(maxlen=100)
     if eval_env is not None:
@@ -121,7 +126,8 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
     # Start total timer
     tfirststart = time.time()
 
-    nupdates = total_timesteps//nbatch
+    #nupdates = total_timesteps//nbatch
+    nupdates = 2000
     for update in range(1, nupdates+1):
         assert nbatch % nminibatches == 0
         # Start timer
@@ -131,10 +137,13 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
         lrnow = lr(frac)
         # Calculate the cliprange
         cliprangenow = cliprange(frac)
+        
         # Get minibatch
         obs, returns, masks, actions, values, neglogpacs, states, epinfos = runner.run() #pylint: disable=E0632
         if eval_env is not None:
             eval_obs, eval_returns, eval_masks, eval_actions, eval_values, eval_neglogpacs, eval_states, eval_epinfos = eval_runner.run() #pylint: disable=E0632
+            success_rate = eval_runner.get_succ_rate()
+
 
         epinfobuf.extend(epinfos)
         if eval_env is not None:
@@ -170,6 +179,8 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
                     slices = (arr[mbflatinds] for arr in (obs, returns, masks, actions, values, neglogpacs))
                     mbstates = states[mbenvinds]
                     mblossvals.append(model.train(lrnow, cliprangenow, *slices, mbstates))
+       
+
 
         # Feedforward --> get losses --> update
         lossvals = np.mean(mblossvals, axis=0)
@@ -181,19 +192,20 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
             # Calculates if value function is a good predicator of the returns (ev > 1)
             # or if it's just worse than predicting nothing (ev =< 0)
             ev = explained_variance(values, returns)
-            logger.logkv("serial_timesteps", update*nsteps)
-            logger.logkv("nupdates", update)
-            logger.logkv("total_timesteps", update*nbatch)
-            logger.logkv("fps", fps)
-            logger.logkv("explained_variance", float(ev))
-            logger.logkv('eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
-            logger.logkv('eplenmean', safemean([epinfo['l'] for epinfo in epinfobuf]))
+            logger.logkv("train/serial_timesteps", update*nsteps)
+            logger.logkv("train/nupdates", update)
+            logger.logkv("train/total_timesteps", update*nbatch)
+            logger.logkv("train/fps", fps)
+            logger.logkv("train/explained_variance", float(ev))
+            logger.logkv('train/eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
+            logger.logkv('train/eplenmean', safemean([epinfo['l'] for epinfo in epinfobuf]))
             if eval_env is not None:
-                logger.logkv('eval_eprewmean', safemean([epinfo['r'] for epinfo in eval_epinfobuf]) )
-                logger.logkv('eval_eplenmean', safemean([epinfo['l'] for epinfo in eval_epinfobuf]) )
-            logger.logkv('time_elapsed', tnow - tfirststart)
+                logger.logkv('test/eprewmean', safemean([epinfo['r'] for epinfo in eval_epinfobuf]) )
+                logger.logkv('test/eplenmean', safemean([epinfo['l'] for epinfo in eval_epinfobuf]) )
+                logger.logkv("test/success_rate", float(success_rate))
+            logger.logkv('train/time_elapsed', tnow - tfirststart)
             for (lossval, lossname) in zip(lossvals, model.loss_names):
-                logger.logkv(lossname, lossval)
+                logger.logkv('train/' + lossname, lossval)
             if MPI is None or MPI.COMM_WORLD.Get_rank() == 0:
                 logger.dumpkvs()
         if save_interval and (update % save_interval == 0 or update == 1) and logger.get_dir() and (MPI is None or MPI.COMM_WORLD.Get_rank() == 0):
@@ -206,6 +218,27 @@ def learn(*, network, env, total_timesteps, eval_env = None, seed=None, nsteps=2
 # Avoid division error when calculate the mean (in our case if epinfo is empty returns np.nan, not return an error)
 def safemean(xs):
     return np.nan if len(xs) == 0 else np.mean(xs)
+
+def get_dims_from_env(env):
+    dims = {}
+    
+    if env != None:
+        env.reset()
+        obs, _, _, info = env.step(env.action_space.sample())
+        print(obs.shape)
+        print(info)
+        dims = {
+            'o': obs.shape[1],
+            'u': env.action_space.shape[0],
+            'g': 3,
+            }
+        for key, value in info[0].items():
+            value = np.array(value)
+            if value.ndim == 0:
+                value = value.reshape(1)
+        dims['info_{}'.format(key)] = value.shape[0]
+    
+    return dims
 
 
 

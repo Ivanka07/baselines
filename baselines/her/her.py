@@ -41,7 +41,6 @@ def train(*, policy, rollout_worker, evaluator,
         rollout_worker.clear_history()
         for _ in range(n_cycles):
             episode = rollout_worker.generate_rollouts()
-            print('Generated episdode', episode)
             policy.store_episode(episode)
             for _ in range(n_batches):
                 policy.train()
@@ -124,7 +123,6 @@ def learn(*, network, env, total_timesteps,
     if demo_file is not None:
         params['bc_loss'] = 1
     params.update(kwargs)
-
     config.log_params(params, logger=logger)
 
     if num_cpu == 1:
