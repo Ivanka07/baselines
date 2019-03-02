@@ -14,7 +14,7 @@ from baselines import logger
 from importlib import import_module
 
 from baselines.common.vec_env.vec_normalize import VecNormalize
-
+print('using gym version = ', gym.__version__)
 try:
     from mpi4py import MPI
 except ImportError:
