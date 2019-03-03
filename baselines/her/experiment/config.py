@@ -98,7 +98,6 @@ def prepare_params(kwargs):
     tmp_env = cached_make_env(kwargs['make_env'])
     assert hasattr(tmp_env, '_max_episode_steps')
     kwargs['T'] = tmp_env._max_episode_steps
-
     kwargs['max_u'] = np.array(kwargs['max_u']) if isinstance(kwargs['max_u'], list) else kwargs['max_u']
     kwargs['gamma'] = 1. - 1. / kwargs['T']
     if 'lr' in kwargs:
@@ -129,6 +128,11 @@ def configure_her(params):
     env.reset()
 
     def reward_fun(ag_2, g, info):  # vectorized
+        print('Rewarding agent')
+        print('achieved_goal=', ag_2.shape)
+        print('desired_goal=', g.shape)
+        #print('info=', info)
+        #print('computing reward')
         return env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
 
     # Prepare configuration for HER.

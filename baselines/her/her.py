@@ -23,7 +23,7 @@ def train(*, policy, rollout_worker, evaluator,
           n_epochs, n_test_rollouts, n_cycles, n_batches, policy_save_interval,
           save_path, demo_file, **kwargs):
     rank = MPI.COMM_WORLD.Get_rank()
-    print('Number of epochs =', n_epochs)
+
 
     if save_path:
         latest_policy_path = os.path.join(save_path, 'policy_latest.pkl')
@@ -33,14 +33,18 @@ def train(*, policy, rollout_worker, evaluator,
     logger.info("Training...")
     best_success_rate = -1
 
-    if policy.bc_loss == 1: policy.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
+    if policy.bc_loss == 1:
+        print('init demo buffer')
+        policy.init_demo_buffer(demo_file) #initialize demo buffer if training with demonstrations
 
     # num_timesteps = n_epochs * n_cycles * rollout_length * number of rollout workers
-    for epoch in range(10):
+    print('Number of epochs =', n_epochs)
+    for epoch in range(n_epochs):
         # train
         rollout_worker.clear_history()
         for _ in range(n_cycles):
             episode = rollout_worker.generate_rollouts()
+            print('Episode length =', len(episode))
             policy.store_episode(episode)
             for _ in range(n_batches):
                 policy.train()
@@ -95,10 +99,13 @@ def learn(*, network, env, total_timesteps,
     override_params=None,
     load_path=None,
     save_path=None,
+    old_policy=None,
+    n_epochs=None,
     **kwargs
 ):
-
     override_params = override_params or {}
+
+
     if MPI is not None:
         rank = MPI.COMM_WORLD.Get_rank()
         num_cpu = MPI.COMM_WORLD.Get_size()
@@ -106,17 +113,36 @@ def learn(*, network, env, total_timesteps,
     # Seed everything.
     rank_seed = seed + 1000000 * rank if seed is not None else None
     set_global_seeds(rank_seed)
-
     # Prepare params.
     params = config.DEFAULT_PARAMS
     env_name = env.specs[0].id
     params['env_name'] = env_name
     params['replay_strategy'] = replay_strategy
+    
     if env_name in config.DEFAULT_ENV_PARAMS:
         params.update(config.DEFAULT_ENV_PARAMS[env_name])  # merge env-specific parameters in
+
+    print('Default params 1 ', params)
+
     params.update(**override_params)  # makes it possible to override any parameter
+
+    print('Dumping params =', params)
     with open(os.path.join(logger.get_dir(), 'params.json'), 'w') as f:
-         json.dump(params, f)
+        try:
+            json.dump(params, f)
+        except:
+            print('could not dump')
+    
+    if old_policy != None:
+        print('reusing policy')
+        new_params = {}
+        for k, v in params.items():
+            if k.startswith('_'):
+                new_params[k[1:len(k)]] = params[k]
+            else:
+                new_params[k] = params[k]
+        params = new_params
+
     params = config.prepare_params(params)
     params['rollout_batch_size'] = env.num_envs
 
@@ -138,7 +164,13 @@ def learn(*, network, env, total_timesteps,
         logger.warn()
 
     dims = config.configure_dims(params)
-    policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
+
+    if old_policy == None:
+        policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
+    else:
+        policy = old_policy
+
+
     if load_path is not None:
         tf_util.load_variables(load_path)
 
@@ -168,7 +200,9 @@ def learn(*, network, env, total_timesteps,
     evaluator = RolloutWorker(eval_env, policy, dims, logger, **eval_params)
 
     n_cycles = params['n_cycles']
-    n_epochs = total_timesteps // n_cycles // rollout_worker.T // rollout_worker.rollout_batch_size
+    
+    if n_epochs ==None:
+        n_epochs = total_timesteps // n_cycles // rollout_worker.T // rollout_worker.rollout_batch_size
 
     return train(
         save_path=save_path, policy=policy, rollout_worker=rollout_worker,

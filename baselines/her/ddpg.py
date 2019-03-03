@@ -160,6 +160,7 @@ class DDPG(object):
     def init_demo_buffer(self, demoDataFile, update_stats=True): #function that initializes the demo buffer
 
         demoData = np.load(demoDataFile) #load the demonstration data from data file
+        print('Loading demo file from ', demoDataFile)
         info_keys = [key.replace('info_', '') for key in self.input_dims.keys() if key.startswith('info_')]
         info_values = [np.empty((self.T - 1, 1, self.input_dims['info_' + key]), np.float32) for key in info_keys]
 
@@ -199,8 +200,9 @@ class DDPG(object):
                 episode['o_2'] = episode['o'][:, 1:, :]
                 episode['ag_2'] = episode['ag'][:, 1:, :]
                 num_normalizing_transitions = transitions_in_episode_batch(episode)
+                #print('Sample transitions with num_normalizing_transitions', num_normalizing_transitions)
+                #print('Sample transitions with episode', episode)
                 transitions = self.sample_transitions(episode, num_normalizing_transitions)
-
                 o, g, ag = transitions['o'], transitions['g'], transitions['ag']
                 transitions['o'], transitions['g'] = self._preprocess_og(o, ag, g)
                 # No need to preprocess the o_2 and g_2 since this is only used for stats
@@ -277,8 +279,11 @@ class DDPG(object):
         ag, ag_2 = transitions['ag'], transitions['ag_2']
         transitions['o'], transitions['g'] = self._preprocess_og(o, ag, g)
         transitions['o_2'], transitions['g_2'] = self._preprocess_og(o_2, ag_2, g)
+        for key in self.stage_shapes.keys():
+            print('transition key = ', key)
 
         transitions_batch = [transitions[key] for key in self.stage_shapes.keys()]
+        print('transitions_batch', transitions_batch)
         return transitions_batch
 
     def stage_batch(self, batch=None):
@@ -331,6 +336,7 @@ class DDPG(object):
         batch_tf = OrderedDict([(key, batch[i])
                                 for i, key in enumerate(self.stage_shapes.keys())])
         batch_tf['r'] = tf.reshape(batch_tf['r'], [-1, 1])
+        print('batch_tf[r]', batch_tf['r'])
 
         #choose only the demo buffer samples
         mask = np.concatenate((np.zeros(self.batch_size - self.demo_batch_size), np.ones(self.demo_batch_size)), axis = 0)

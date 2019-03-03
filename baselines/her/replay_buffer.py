@@ -42,6 +42,7 @@ class ReplayBuffer:
         with self.lock:
             assert self.current_size > 0
             for key in self.buffers.keys():
+                print('Replay Buffer Key', key)
                 buffers[key] = self.buffers[key][:self.current_size]
 
         buffers['o_2'] = buffers['o'][:, 1:, :]

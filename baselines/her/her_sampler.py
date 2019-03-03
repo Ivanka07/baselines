@@ -21,7 +21,9 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):
         """
         T = episode_batch['u'].shape[1]
         rollout_batch_size = episode_batch['u'].shape[0]
+        #max of the episode
         batch_size = batch_size_in_transitions
+        #print('Batch size = ',batch_size)
 
         # Select which episodes and time steps to use.
         episode_idxs = np.random.randint(0, rollout_batch_size, batch_size)
@@ -52,7 +54,6 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):
         reward_params = {k: transitions[k] for k in ['ag_2', 'g']}
         reward_params['info'] = info
         transitions['r'] = reward_fun(**reward_params)
-
         transitions = {k: transitions[k].reshape(batch_size, *transitions[k].shape[1:])
                        for k in transitions.keys()}
 
