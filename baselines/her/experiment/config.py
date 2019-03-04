@@ -123,17 +123,20 @@ def log_params(params, logger=logger):
         logger.info('{}: {}'.format(key, params[key]))
 
 
-def configure_her(params):
+def configure_her(params, discriminator=None):
     env = cached_make_env(params['make_env'])
     env.reset()
 
-    def reward_fun(ag_2, g, info):  # vectorized
+    def reward_fun(discriminator, ag_2, g, info):  # vectorized
         print('Rewarding agent')
-        print('achieved_goal=', ag_2.shape)
-        print('desired_goal=', g.shape)
-        #print('info=', info)
-        #print('computing reward')
-        return env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
+        rewards = []
+        if discriminator !=None:
+            rewards = discrim.get_rewards(agent_s=test_exp_obs, agent_a=test_exp_acs)
+        else: 
+            rewards = env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
+        print('rewards shape', rewards.shape)
+
+        return rewards
 
     # Prepare configuration for HER.
     her_params = {
@@ -154,7 +157,7 @@ def simple_goal_subtract(a, b):
 
 
 def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True, discriminator=None):
-    sample_her_transitions = configure_her(params)
+    sample_her_transitions = configure_her(params, discriminator)
     # Extract relevant parameters.
     gamma = params['gamma']
     rollout_batch_size = params['rollout_batch_size']
