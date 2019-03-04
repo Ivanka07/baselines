@@ -18,6 +18,7 @@ class ReplayBuffer:
         self.size = size_in_transitions // T
         self.T = T
         self.sample_transitions = sample_transitions
+        self.discriminator = None
 
         # self.buffers is {key: array(size_in_episodes x T or T+1 x dim_key)}
         self.buffers = {key: np.empty([self.size, *shape])
@@ -48,7 +49,7 @@ class ReplayBuffer:
         buffers['o_2'] = buffers['o'][:, 1:, :]
         buffers['ag_2'] = buffers['ag'][:, 1:, :]
 
-        transitions = self.sample_transitions(buffers, batch_size)
+        transitions = self.sample_transitions(buffers, batch_size, self.discriminator)
 
         for key in (['r', 'o_2', 'ag_2'] + list(self.buffers.keys())):
             assert key in transitions, "key %s missing from transitions" % key
@@ -107,3 +108,8 @@ class ReplayBuffer:
         if inc == 1:
             idx = idx[0]
         return idx
+
+    def set_discriminator(self, disc):
+        print('[replay bufffer] setting discrim')
+        self.discriminator = disc
+

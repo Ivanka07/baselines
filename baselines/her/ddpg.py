@@ -62,6 +62,8 @@ class DDPG(object):
             prm_loss_weight: Weight corresponding to the primary loss
             aux_loss_weight: Weight corresponding to the auxilliary loss also called the cloning loss
         """
+        self.discriminator = None
+
         if self.clip_return is None:
             self.clip_return = np.inf
 
@@ -202,7 +204,7 @@ class DDPG(object):
                 num_normalizing_transitions = transitions_in_episode_batch(episode)
                 #print('Sample transitions with num_normalizing_transitions', num_normalizing_transitions)
                 #print('Sample transitions with episode', episode)
-                transitions = self.sample_transitions(episode, num_normalizing_transitions)
+                transitions = self.sample_transitions(episode, num_normalizing_transitions, self.discriminator)
                 o, g, ag = transitions['o'], transitions['g'], transitions['ag']
                 transitions['o'], transitions['g'] = self._preprocess_og(o, ag, g)
                 # No need to preprocess the o_2 and g_2 since this is only used for stats
@@ -229,7 +231,7 @@ class DDPG(object):
             episode_batch['o_2'] = episode_batch['o'][:, 1:, :]
             episode_batch['ag_2'] = episode_batch['ag'][:, 1:, :]
             num_normalizing_transitions = transitions_in_episode_batch(episode_batch)
-            transitions = self.sample_transitions(episode_batch, num_normalizing_transitions)
+            transitions = self.sample_transitions(episode_batch, num_normalizing_transitions, self.discriminator)
 
             o, g, ag = transitions['o'], transitions['g'], transitions['ag']
             transitions['o'], transitions['g'] = self._preprocess_og(o, ag, g)
@@ -451,4 +453,9 @@ class DDPG(object):
 
     def save(self, save_path):
         tf_util.save_variables(save_path)
+
+    def set_discriminator(self, disc):
+        print('[ddpg] setting discrim')
+        self.discriminator = disc
+        self.buffer.set_discriminator(disc)
 

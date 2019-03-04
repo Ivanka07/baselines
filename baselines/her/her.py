@@ -101,11 +101,11 @@ def learn(*, network, env, total_timesteps,
     save_path=None,
     old_policy=None,
     n_epochs=None,
-    discrim=None,
+    discr=None,
     **kwargs
 ):
     override_params = override_params or {}
-
+    print('[learn.her] discriminator=', discr)
 
     if MPI is not None:
         rank = MPI.COMM_WORLD.Get_rank()
@@ -164,9 +164,12 @@ def learn(*, network, env, total_timesteps,
     dims = config.configure_dims(params)
 
     if old_policy == None:
-        policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return, discriminator=discrim)
+        policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
     else:
+        print('reusing policy and setting discriminator=', discr)
         policy = old_policy
+        config.set_discriminator(discr)
+        policy.set_discriminator(discr)
 
 
     if load_path is not None:

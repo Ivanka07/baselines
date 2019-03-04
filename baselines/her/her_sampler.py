@@ -1,5 +1,10 @@
 import numpy as np
 
+discriminator = None
+
+def set_discriminator(d):
+    print('[her sampler] setting discriminator to ', d)
+    discriminator = d
 
 def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):
     """Creates a sample function that can be used for HER experience replay.
@@ -11,12 +16,13 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):
             as many HER replays as regular replays are used)
         reward_fun (function): function to re-compute the reward with substituted goals
     """
+    print('[her sampler] make_sample_her_transitions d=', discriminator)
     if replay_strategy == 'future':
         future_p = 1 - (1. / (1 + replay_k))
     else:  # 'replay_strategy' == 'none'
         future_p = 0
 
-    def _sample_her_transitions(episode_batch, batch_size_in_transitions, discriminator=None):
+    def _sample_her_transitions(episode_batch, batch_size_in_transitions, discriminator):
         """episode_batch is {key: array(buffer_size x T x dim_key)}
         """
         T = episode_batch['u'].shape[1]
@@ -53,6 +59,7 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):
         # Re-compute reward since we may have substituted the goal.
         reward_params = {k: transitions[k] for k in ['ag_2', 'g']}
         reward_params['info'] = info
+        print('[_sample_her_transitions] discriminator', discriminator)
         transitions['r'] = reward_fun(discriminator, **reward_params)
         transitions = {k: transitions[k].reshape(batch_size, *transitions[k].shape[1:])
                        for k in transitions.keys()}

@@ -4,7 +4,7 @@ import gym
 
 from baselines import logger
 from baselines.her.ddpg import DDPG
-from baselines.her.her_sampler import make_sample_her_transitions
+from baselines.her.her_sampler import make_sample_her_transitions, set_discriminator
 from baselines.bench.monitor import Monitor
 
 DEFAULT_ENV_PARAMS = {
@@ -56,6 +56,7 @@ DEFAULT_PARAMS = {
 
 
 CACHED_ENVS = {}
+discriminator = None
 
 
 def cached_make_env(make_env):
@@ -123,18 +124,19 @@ def log_params(params, logger=logger):
         logger.info('{}: {}'.format(key, params[key]))
 
 
-def configure_her(params, discriminator=None):
+def configure_her(params):
     env = cached_make_env(params['make_env'])
     env.reset()
 
     def reward_fun(discriminator, ag_2, g, info):  # vectorized
-        print('Rewarding agent')
+       # print('Rewarding agent')
         rewards = []
+        print('[config.configure_her] discriminator = ', discriminator)
         if discriminator !=None:
             rewards = discrim.get_rewards(agent_s=test_exp_obs, agent_a=test_exp_acs)
         else: 
             rewards = env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
-        print('rewards', rewards)
+       # print('rewards', rewards)
 
         return rewards
 
@@ -146,6 +148,7 @@ def configure_her(params, discriminator=None):
         her_params[name] = params[name]
         params['_' + name] = her_params[name]
         del params[name]
+    set_discriminator(discriminator)
     sample_her_transitions = make_sample_her_transitions(**her_params)
 
     return sample_her_transitions
@@ -155,9 +158,15 @@ def simple_goal_subtract(a, b):
     assert a.shape == b.shape
     return a - b
 
+def set_discr(discr):
+    discriminator = discr
+    print('set_discriminator', discriminator)
 
-def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True, discriminator=None):
-    sample_her_transitions = configure_her(params, discriminator)
+
+
+def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
+    print('[configure_ddpg] discriminator=', discriminator)
+    sample_her_transitions = configure_her(params)
     # Extract relevant parameters.
     gamma = params['gamma']
     rollout_batch_size = params['rollout_batch_size']
