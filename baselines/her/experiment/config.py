@@ -134,7 +134,7 @@ def configure_her(params, discriminator=None):
             rewards = discrim.get_rewards(agent_s=test_exp_obs, agent_a=test_exp_acs)
         else: 
             rewards = env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
-        print('rewards shape', rewards.shape)
+        print('rewards', rewards)
 
         return rewards
 
