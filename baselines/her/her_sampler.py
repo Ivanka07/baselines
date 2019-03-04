@@ -57,9 +57,10 @@ def make_sample_her_transitions(replay_strategy, replay_k, reward_fun):
                 info[key.replace('info_', '')] = value
 
         # Re-compute reward since we may have substituted the goal.
-        reward_params = {k: transitions[k] for k in ['ag_2', 'g']}
+        reward_params = {k: transitions[k] for k in ['ag_2', 'g', 'o', 'u']}
         reward_params['info'] = info
-        print('[_sample_her_transitions] discriminator', discriminator)
+        #print(reward_params)
+        #print('[_sample_her_transitions] discriminator', discriminator)
         transitions['r'] = reward_fun(discriminator, **reward_params)
         transitions = {k: transitions[k].reshape(batch_size, *transitions[k].shape[1:])
                        for k in transitions.keys()}

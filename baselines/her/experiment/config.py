@@ -128,15 +128,17 @@ def configure_her(params):
     env = cached_make_env(params['make_env'])
     env.reset()
 
-    def reward_fun(discriminator, ag_2, g, info):  # vectorized
+    def reward_fun(discriminator, ag_2, g, info,o,u):  # vectorized
        # print('Rewarding agent')
         rewards = []
-        print('[config.configure_her] discriminator = ', discriminator)
+        #print('[config.configure_her] discriminator = ', discriminator)
         if discriminator !=None:
-            rewards = discrim.get_rewards(agent_s=test_exp_obs, agent_a=test_exp_acs)
+            o_concat = np.concatenate((o, ag_2, g),  axis=1)
+            rewards = discriminator.get_rewards(agent_s=o_concat, agent_a=u)
+            rewards = rewards.flatten()
         else: 
             rewards = env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
-       # print('rewards', rewards)
+        #print('rewards', rewards)
 
         return rewards
 
