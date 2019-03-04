@@ -25,7 +25,7 @@ class DDPG(object):
                  Q_lr, pi_lr, norm_eps, norm_clip, max_u, action_l2, clip_obs, scope, T,
                  rollout_batch_size, subtract_goals, relative_goals, clip_pos_returns, clip_return,
                  bc_loss, q_filter, num_demo, demo_batch_size, prm_loss_weight, aux_loss_weight,
-                 sample_transitions, gamma, reuse=False, **kwargs):
+                 sample_transitions, gamma, reuse=False, discr=None, **kwargs):
         """Implementation of DDPG that is used in combination with Hindsight Experience Replay (HER).
             Added functionality to use demonstrations for training to Overcome exploration problem.
 
@@ -279,11 +279,11 @@ class DDPG(object):
         ag, ag_2 = transitions['ag'], transitions['ag_2']
         transitions['o'], transitions['g'] = self._preprocess_og(o, ag, g)
         transitions['o_2'], transitions['g_2'] = self._preprocess_og(o_2, ag_2, g)
-        for key in self.stage_shapes.keys():
-            print('transition key = ', key)
+        #for key in self.stage_shapes.keys():
+         #   print('transition key = ', key)
 
         transitions_batch = [transitions[key] for key in self.stage_shapes.keys()]
-        print('transitions_batch', transitions_batch)
+       #print('transitions_batch', transitions_batch)
         return transitions_batch
 
     def stage_batch(self, batch=None):

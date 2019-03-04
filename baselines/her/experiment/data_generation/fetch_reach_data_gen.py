@@ -7,11 +7,12 @@ import numpy as np
 actions = []
 observations = []
 infos = []
+vectorize_observation = True
 
 def main():
     env = gym.make('FetchReach-v1')
-    numItr = 100
-    initStateSpace = "random2"
+    numItr = 200
+    initStateSpace = "random"
     env.reset()
     print("Reset!")
     while len(actions) < numItr:
@@ -20,13 +21,21 @@ def main():
         goToGoal(env, obs)
 
 
-    fileName = "data_fetch_reeach"
+    fileName = "data_fetch_reach"
     fileName += "_" + initStateSpace
     fileName += "_" + str(numItr)
     fileName += ".npz"
 
     np.savez_compressed(fileName, acs=actions, obs=observations, info=infos) # save the file
+    return fileName
 
+def vectorize_obs(obs):
+    vect_obs = []
+    for k,v in obs.items():
+        for element in v:
+            vect_obs.append(element)
+    return vect_obs
+            
 def goToGoal(env, lastObs):
 
     goal = lastObs['desired_goal']
@@ -37,10 +46,15 @@ def goToGoal(env, lastObs):
     episodeInfo = []
 
     timeStep = 0 #count the total number of timesteps
-    episodeObs.append(lastObs)
+    if vectorize_observation:
+        episodeObs.append(vectorize_obs(lastObs))
+    else:
+        episodeObs.append(lastObs)
 
     while timeStep <= env._max_episode_steps:
-        env.render()
+        
+        timeStep += 1
+        #env.render()
         action = [0, 0, 0, 0]
         goal_diff =  goal - achieved_goal
 
@@ -48,13 +62,18 @@ def goToGoal(env, lastObs):
             action[i] = goal_diff[i]
 
         action[len(action)-1] = 0.05 #open
-
         obsDataNew, reward, done, info = env.step(action)
-        timeStep += 1
+        if timeStep < env._max_episode_steps:
+            if vectorize_observation:
+                episodeObs.append(vectorize_obs(obsDataNew))
+            else:
+                episodeObs.append(obsDataNew)
+
+
 
         episodeAcs.append(action)
         episodeInfo.append(info)
-        episodeObs.append(obsDataNew)
+
 
         achieved_goal = obsDataNew['achieved_goal']
         if timeStep >= env._max_episode_steps: break
@@ -63,6 +82,13 @@ def goToGoal(env, lastObs):
     observations.append(episodeObs)
     infos.append(episodeInfo)
 
+def test(filename):
+    print('Test')
+    data = np.load(fileName)
+    print('Obs shape={}'.format(data['obs'].shape))
+    print('Acs shape={}'.format(data['acs'].shape))
+    print('Infos shape={}'.format(data['info'].shape))
 
 if __name__ == "__main__":
-    main()
+    fileName = main()
+    test(fileName)

@@ -9,7 +9,7 @@ observations = []
 infos = []
 
 def main():
-    env = gym.make('FetchPickAndPlace-v1')
+    env = gym.make('FetchReach-v1')
     numItr = 100
     initStateSpace = "random"
     env.reset()

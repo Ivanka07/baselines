@@ -101,6 +101,7 @@ def learn(*, network, env, total_timesteps,
     save_path=None,
     old_policy=None,
     n_epochs=None,
+    discrim=None,
     **kwargs
 ):
     override_params = override_params or {}
@@ -122,16 +123,13 @@ def learn(*, network, env, total_timesteps,
     if env_name in config.DEFAULT_ENV_PARAMS:
         params.update(config.DEFAULT_ENV_PARAMS[env_name])  # merge env-specific parameters in
 
-    print('Default params 1 ', params)
-
     params.update(**override_params)  # makes it possible to override any parameter
 
-    print('Dumping params =', params)
     with open(os.path.join(logger.get_dir(), 'params.json'), 'w') as f:
         try:
             json.dump(params, f)
         except:
-            print('could not dump')
+            print('could not dump json file')
     
     if old_policy != None:
         print('reusing policy')
@@ -166,7 +164,7 @@ def learn(*, network, env, total_timesteps,
     dims = config.configure_dims(params)
 
     if old_policy == None:
-        policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
+        policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return, discriminator=discrim)
     else:
         policy = old_policy
 
