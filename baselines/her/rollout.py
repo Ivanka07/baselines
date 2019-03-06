@@ -149,6 +149,7 @@ class RolloutWorker:
         return np.mean(self.Q_history)
 
     def save_policy(self, path):
+        print('path=', path)
         """Pickles the current policy for later inspection.
         """
         with open(path, 'wb') as f:

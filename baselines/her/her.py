@@ -11,6 +11,7 @@ from baselines.common.mpi_moments import mpi_moments
 import baselines.her.experiment.config as config
 from baselines.her.rollout import RolloutWorker
 
+
 def mpi_average(value):
     if not isinstance(value, list):
         value = [value]
@@ -25,10 +26,13 @@ def train(*, policy, rollout_worker, evaluator,
     rank = MPI.COMM_WORLD.Get_rank()
 
 
+
     if save_path:
+        logger.debug('Saving policy to  {} '.format(save_path))
         latest_policy_path = os.path.join(save_path, 'policy_latest.pkl')
         best_policy_path = os.path.join(save_path, 'policy_best.pkl')
         periodic_policy_path = os.path.join(save_path, 'policy_{}.pkl')
+        tf_util.save_variables(save_path + '/model')
 
     logger.info("Training...")
     best_success_rate = -1
@@ -39,12 +43,12 @@ def train(*, policy, rollout_worker, evaluator,
 
     # num_timesteps = n_epochs * n_cycles * rollout_length * number of rollout workers
     print('Number of epochs =', n_epochs)
+    logger.debug('Number of epochs {} '.format(n_epochs))
     for epoch in range(n_epochs):
         # train
         rollout_worker.clear_history()
         for _ in range(n_cycles):
             episode = rollout_worker.generate_rollouts()
-            print('Episode length =', len(episode))
             policy.store_episode(episode)
             for _ in range(n_batches):
                 policy.train()
@@ -71,7 +75,7 @@ def train(*, policy, rollout_worker, evaluator,
         success_rate = mpi_average(evaluator.current_success_rate())
         if rank == 0 and success_rate >= best_success_rate and save_path:
             best_success_rate = success_rate
-            logger.info('New best success rate: {}. Saving policy to {} ...'.format(best_success_rate, best_policy_path))
+            logger.debug('New best success rate: {}. Saving policy to {} ...'.format(best_success_rate, best_policy_path))
             evaluator.save_policy(best_policy_path)
             evaluator.save_policy(latest_policy_path)
         if rank == 0 and policy_save_interval > 0 and epoch % policy_save_interval == 0 and save_path:
@@ -85,7 +89,7 @@ def train(*, policy, rollout_worker, evaluator,
         MPI.COMM_WORLD.Bcast(root_uniform, root=0)
         if rank != 0:
             assert local_uniform[0] != root_uniform[0]
-
+    tf_util.save_variables('home/robbie/policies/gail_her/gail1000/model')
     return policy
 
 
@@ -131,7 +135,7 @@ def learn(*, network, env, total_timesteps,
         except:
             print('could not dump json file')
     
-    if old_policy != None:
+    if discr != None:
         print('reusing policy')
         new_params = {}
         for k, v in params.items():
@@ -162,17 +166,18 @@ def learn(*, network, env, total_timesteps,
         logger.warn()
 
     dims = config.configure_dims(params)
-
-    if old_policy == None:
-        policy = config.configure_ddpg(dims=dims, params=params, clip_return=clip_return)
+        
+    if discr == None:
+        policy = config.configure_ddpg(dims=dims, params=params, reuse=False, clip_return=clip_return)
     else:
-        print('reusing policy and setting discriminator=', discr)
-        policy = old_policy
+        print('****************************************************************** reusing policy and setting discriminator=', discr)
+        #policy = old_policy
+        policy = config.configure_ddpg(dims=dims, params=params,reuse=True, clip_return=clip_return)
         config.set_discriminator(discr)
         policy.set_discriminator(discr)
 
-
     if load_path is not None:
+        print('Loading variables')
         tf_util.load_variables(load_path)
 
     rollout_params = {
@@ -196,7 +201,6 @@ def learn(*, network, env, total_timesteps,
         eval_params[name] = params[name]
 
     eval_env = eval_env or env
-
     rollout_worker = RolloutWorker(env, policy, dims, logger, monitor=True, **rollout_params)
     evaluator = RolloutWorker(eval_env, policy, dims, logger, **eval_params)
 

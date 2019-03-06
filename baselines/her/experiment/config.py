@@ -136,6 +136,8 @@ def configure_her(params):
             o_concat = np.concatenate((o, ag_2, g),  axis=1)
             rewards = discriminator.get_rewards(agent_s=o_concat, agent_a=u)
             rewards = rewards.flatten()
+            print('Rewards shape=', rewards.shape)
+            print('Avarage reward=', np.mean(rewards))
         else: 
             rewards = env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
         #print('rewards', rewards)
@@ -167,7 +169,8 @@ def set_discr(discr):
 
 
 def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
-    print('[configure_ddpg] discriminator=', discriminator)
+    print('[configure_ddpg] discriminator =', discriminator)
+    print('[configure_ddpg] resusing variables=', reuse)
     sample_her_transitions = configure_her(params)
     # Extract relevant parameters.
     gamma = params['gamma']
@@ -198,11 +201,15 @@ def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
     ddpg_params['info'] = {
         'env_name': params['env_name'],
     }
+    print('ddpg_params',ddpg_params)
+    ddpg_params['batch_size'] = 502
+    print('ddpg_params',ddpg_params)
     policy = DDPG(reuse=reuse, **ddpg_params, use_mpi=use_mpi, discr=discriminator)
     return policy
 
 
 def configure_dims(params):
+    print('configuring dims')
     env = cached_make_env(params['make_env'])
     env.reset()
     obs, _, _, info = env.step(env.action_space.sample())

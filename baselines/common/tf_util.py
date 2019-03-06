@@ -352,7 +352,6 @@ def save_variables(save_path, variables=None, sess=None):
 def load_variables(load_path, variables=None, sess=None):
     sess = sess or get_session()
     variables = variables or tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
-
     loaded_params = joblib.load(os.path.expanduser(load_path))
     restores = []
     if isinstance(loaded_params, list):
@@ -361,8 +360,8 @@ def load_variables(load_path, variables=None, sess=None):
             restores.append(v.assign(d))
     else:
         for v in variables:
-            restores.append(v.assign(loaded_params[v.name]))
-
+            if v.name.startswith('ddpg'):
+                restores.append(v.assign(loaded_params[v.name]))
     sess.run(restores)
 
 # ================================================================

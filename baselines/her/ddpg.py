@@ -84,6 +84,7 @@ class DDPG(object):
             stage_shapes[key + '_2'] = stage_shapes[key]
         stage_shapes['r'] = (None,)
         self.stage_shapes = stage_shapes
+        self.reuse = reuse
 
         # Create network.
         with tf.variable_scope(self.scope):
@@ -93,7 +94,6 @@ class DDPG(object):
             self.buffer_ph_tf = [
                 tf.placeholder(tf.float32, shape=shape) for shape in self.stage_shapes.values()]
             self.stage_op = self.staging_tf.put(self.buffer_ph_tf)
-
             self._create_network(reuse=reuse)
 
         # Configure the replay buffer.
@@ -324,13 +324,15 @@ class DDPG(object):
         self.sess = tf_util.get_session()
 
         # running averages
-        with tf.variable_scope('o_stats') as vs:
-            if reuse:
-                vs.reuse_variables()
+        with tf.variable_scope('o_stats', reuse=tf.AUTO_REUSE) as vs:
+           # if reuse:
+            #    vs.reuse_variables()
             self.o_stats = Normalizer(self.dimo, self.norm_eps, self.norm_clip, sess=self.sess)
-        with tf.variable_scope('g_stats') as vs:
-            if reuse:
-                vs.reuse_variables()
+            print('self.o_stats', self.o_stats)
+        
+        with tf.variable_scope('g_stats', reuse=tf.AUTO_REUSE) as vs:
+           # if reuse:
+            #    vs.reuse_variables()
             self.g_stats = Normalizer(self.dimg, self.norm_eps, self.norm_clip, sess=self.sess)
 
         # mini-batch sampling.
@@ -338,20 +340,17 @@ class DDPG(object):
         batch_tf = OrderedDict([(key, batch[i])
                                 for i, key in enumerate(self.stage_shapes.keys())])
         batch_tf['r'] = tf.reshape(batch_tf['r'], [-1, 1])
-        print('batch_tf[r]', batch_tf['r'])
-
+        
         #choose only the demo buffer samples
         mask = np.concatenate((np.zeros(self.batch_size - self.demo_batch_size), np.ones(self.demo_batch_size)), axis = 0)
 
         # networks
-        with tf.variable_scope('main') as vs:
+        with tf.variable_scope('main', reuse=tf.AUTO_REUSE) as vs:
             if reuse:
                 vs.reuse_variables()
             self.main = self.create_actor_critic(batch_tf, net_type='main', **self.__dict__)
             vs.reuse_variables()
-        with tf.variable_scope('target') as vs:
-            if reuse:
-                vs.reuse_variables()
+        with tf.variable_scope('target', reuse=tf.AUTO_REUSE) as vs:
             target_batch_tf = batch_tf.copy()
             target_batch_tf['o'] = batch_tf['o_2']
             target_batch_tf['g'] = batch_tf['g_2']
