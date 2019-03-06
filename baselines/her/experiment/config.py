@@ -202,7 +202,7 @@ def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
         'env_name': params['env_name'],
     }
     print('ddpg_params',ddpg_params)
-    ddpg_params['batch_size'] = 502
+    ddpg_params['batch_size'] = 256*3
     print('ddpg_params',ddpg_params)
     policy = DDPG(reuse=reuse, **ddpg_params, use_mpi=use_mpi, discr=discriminator)
     return policy
