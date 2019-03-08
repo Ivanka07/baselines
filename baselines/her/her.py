@@ -4,6 +4,7 @@ import click
 import numpy as np
 import json
 from mpi4py import MPI
+import copy
 
 from baselines import logger
 from baselines.common import set_global_seeds, tf_util
@@ -25,7 +26,7 @@ def train(*, policy, rollout_worker, evaluator,
           save_path, demo_file, **kwargs):
     rank = MPI.COMM_WORLD.Get_rank()
 
-
+    save_path = 'policies/policies/gail_her/gail1000'
 
     if save_path:
         logger.debug('Saving policy to  {} '.format(save_path))
@@ -54,6 +55,7 @@ def train(*, policy, rollout_worker, evaluator,
                 policy.train()
             policy.update_target_net()
 
+     #   evaluator.save_policy(latest_policy_path)
         # test
         evaluator.clear_history()
         for _ in range(n_test_rollouts):
@@ -75,13 +77,14 @@ def train(*, policy, rollout_worker, evaluator,
         success_rate = mpi_average(evaluator.current_success_rate())
         if rank == 0 and success_rate >= best_success_rate and save_path:
             best_success_rate = success_rate
-            logger.debug('New best success rate: {}. Saving policy to {} ...'.format(best_success_rate, best_policy_path))
-            evaluator.save_policy(best_policy_path)
-            evaluator.save_policy(latest_policy_path)
+            eval_best_policy_path = os.path.join(save_path, 'eval_policy_best.pkl')
+            logger.debug('New best success rate: {}. Saving policy to {} ...'.format(best_success_rate, eval_best_policy_path))
+      #      evaluator.save_policy(eval_best_policy_path)
+            #evaluator.save_policy(latest_policy_path)
         if rank == 0 and policy_save_interval > 0 and epoch % policy_save_interval == 0 and save_path:
             policy_path = periodic_policy_path.format(epoch)
             logger.info('Saving periodic policy to {} ...'.format(policy_path))
-            evaluator.save_policy(policy_path)
+       #     evaluator.save_policy(policy_path)
 
         # make sure that different threads have different seeds
         local_uniform = np.random.uniform(size=(1,))
@@ -89,7 +92,7 @@ def train(*, policy, rollout_worker, evaluator,
         MPI.COMM_WORLD.Bcast(root_uniform, root=0)
         if rank != 0:
             assert local_uniform[0] != root_uniform[0]
-    tf_util.save_variables('home/robbie/policies/gail_her/gail1000/model')
+    tf_util.save_variables(os.path.join('policies/gail_her/gail1000/gailmodel'))
     return policy
 
 

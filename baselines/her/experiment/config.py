@@ -136,10 +136,12 @@ def configure_her(params):
             o_concat = np.concatenate((o, ag_2, g),  axis=1)
             rewards = discriminator.get_rewards(agent_s=o_concat, agent_a=u)
             rewards = rewards.flatten()
-            print('Rewards shape=', rewards.shape)
+            logger.debug('Avarage reward for the episode={}'.format(np.mean(rewards)))
             print('Avarage reward=', np.mean(rewards))
         else: 
             rewards = env.compute_reward(achieved_goal=ag_2, desired_goal=g, info=info)
+            print('Avarage reward from sim =', np.mean(rewards))
+            logger.debug('Avarage reward for the episode from sim={}'.format(np.mean(rewards)))
         #print('rewards', rewards)
 
         return rewards
@@ -202,7 +204,7 @@ def configure_ddpg(dims, params, reuse=False, use_mpi=True, clip_return=True):
         'env_name': params['env_name'],
     }
     print('ddpg_params',ddpg_params)
-    ddpg_params['batch_size'] = 256*3
+    ddpg_params['batch_size'] = 512
     print('ddpg_params',ddpg_params)
     policy = DDPG(reuse=reuse, **ddpg_params, use_mpi=use_mpi, discr=discriminator)
     return policy
