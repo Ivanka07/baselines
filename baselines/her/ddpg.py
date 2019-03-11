@@ -115,6 +115,7 @@ class DDPG(object):
         if self.relative_goals:
             g_shape = g.shape
             g = g.reshape(-1, self.dimg)
+           # print('[_preprocess_og] ****************************************************', g.shape)
             ag = ag.reshape(-1, self.dimg)
             g = self.subtract_goals(g, ag)
             g = g.reshape(*g_shape)
@@ -232,7 +233,7 @@ class DDPG(object):
             episode_batch['ag_2'] = episode_batch['ag'][:, 1:, :]
             num_normalizing_transitions = transitions_in_episode_batch(episode_batch)
             transitions = self.sample_transitions(episode_batch, num_normalizing_transitions, self.discriminator)
-
+            #print('transitions[g]', transitions['g'])
             o, g, ag = transitions['o'], transitions['g'], transitions['ag']
             transitions['o'], transitions['g'] = self._preprocess_og(o, ag, g)
             # No need to preprocess the o_2 and g_2 since this is only used for stats

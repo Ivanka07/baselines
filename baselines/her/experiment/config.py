@@ -18,7 +18,7 @@ DEFAULT_PARAMS = {
     # env
     'max_u': 1.,  # max absolute value of actions on different coordinates
     # ddpg
-    'layers': 256,  # number of layers in the critic/actor networks
+    'layers': 3,  # number of layers in the critic/actor networks
     'hidden': 256,  # number of neurons in each hidden layers
     'network_class': 'baselines.her.actor_critic:ActorCritic',
     'Q_lr': 0.001,  # critic learning rate
@@ -129,7 +129,9 @@ def configure_her(params):
     env.reset()
 
     def reward_fun(discriminator, ag_2, g, info,o,u):  # vectorized
-       # print('Rewarding agent')
+        #print('**********************Rewarding agent***********************')
+        #print('ag_2', ag_2)
+        #print('goal', g)
         rewards = []
         #print('[config.configure_her] discriminator = ', discriminator)
         if discriminator !=None:

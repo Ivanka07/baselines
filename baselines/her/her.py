@@ -5,12 +5,18 @@ import numpy as np
 import json
 from mpi4py import MPI
 import copy
+import datetime
 
 from baselines import logger
 from baselines.common import set_global_seeds, tf_util
 from baselines.common.mpi_moments import mpi_moments
 import baselines.her.experiment.config as config
 from baselines.her.rollout import RolloutWorker
+from pathlib import Path
+home = str(Path.home())
+
+
+
 
 
 def mpi_average(value):
@@ -26,14 +32,14 @@ def train(*, policy, rollout_worker, evaluator,
           save_path, demo_file, **kwargs):
     rank = MPI.COMM_WORLD.Get_rank()
 
-    save_path = 'policies/policies/gail_her/gail1000'
-
+    
     if save_path:
+        save_path = home + save_path
         logger.debug('Saving policy to  {} '.format(save_path))
         latest_policy_path = os.path.join(save_path, 'policy_latest.pkl')
         best_policy_path = os.path.join(save_path, 'policy_best.pkl')
         periodic_policy_path = os.path.join(save_path, 'policy_{}.pkl')
-        tf_util.save_variables(save_path + '/model')
+        tf_util.save_variables(save_path + '/init_model')
 
     logger.info("Training...")
     best_success_rate = -1
@@ -45,6 +51,7 @@ def train(*, policy, rollout_worker, evaluator,
     # num_timesteps = n_epochs * n_cycles * rollout_length * number of rollout workers
     print('Number of epochs =', n_epochs)
     logger.debug('Number of epochs {} '.format(n_epochs))
+    n_epochs = 100
     for epoch in range(n_epochs):
         # train
         rollout_worker.clear_history()
@@ -92,7 +99,11 @@ def train(*, policy, rollout_worker, evaluator,
         MPI.COMM_WORLD.Bcast(root_uniform, root=0)
         if rank != 0:
             assert local_uniform[0] != root_uniform[0]
-    tf_util.save_variables(os.path.join('policies/gail_her/gail1000/gailmodel'))
+    currentDT = datetime.datetime.now()
+    model_path = home + '/policies/gail_her/gail1000/gailmodel_reach' + '_' + currentDT.strftime("%Y-%m-%d")
+    print('saving model to ', model_path)
+    tf_util.save_variables(model_path)
+
     return policy
 
 
