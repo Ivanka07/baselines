@@ -222,6 +222,7 @@ def main(args):
 
         state = model.initial_state if hasattr(model, 'initial_state') else None
         dones = np.zeros((1,))
+        i = 0
 
         while True:
             if state is not None:
@@ -229,9 +230,15 @@ def main(args):
             else:
                 actions, _, _, _ = model.step(obs)
 
-            obs, _, done, _ = env.step(actions)
+            obs, _, done, info = env.step(actions)
+            print(info)
             env.render()
+            i +=1 
+            if info[0]['is_success']:
+                print('Done in ', i, ' step')
+                break
             done = done.any() if isinstance(done, np.ndarray) else done
+
 
             if done:
                 obs = env.reset()

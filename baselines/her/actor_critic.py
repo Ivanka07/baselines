@@ -29,6 +29,7 @@ class ActorCritic:
         o = self.o_stats.normalize(self.o_tf)
         g = self.g_stats.normalize(self.g_tf)
         input_pi = tf.concat(axis=1, values=[o, g])  # for actor
+        print('~~~~~~~~~~~~~~~~~~~_______________________________________________~~~ hidden units', self.hidden, ' layers ', self.layers)
 
         # Networks.
         with tf.variable_scope('pi'):

@@ -11,7 +11,7 @@ vectorize_observation = True
 
 def main():
     env = gym.make('FetchReach-v1')
-    numItr = 200
+    numItr = 500
     initStateSpace = "random"
     env.reset()
     print("Reset!")
