@@ -65,14 +65,16 @@ class ReplayBuffer:
 
         with self.lock:
             idxs = self._get_storage_idx(batch_size)
+            print('idxs', idxs)
 
             # load inputs into buffers
             for key in self.buffers.keys():
-                #print('Key', key)
-                #if key=='g':
-                #   print('episode_batch[key]', episode_batch[key].shape)
+                print('Key', key)
+                if key=='g':
+                    #print('Episode batch', episode_batch[key].shape)    
+                    episode_batch['g'] = episode_batch['g'].reshape(1, 299, 27) 
+                    #print('Episode batch', episode_batch[key])
                 self.buffers[key][idxs] = episode_batch[key]
-
             self.n_transitions_stored += batch_size * self.T
 
     def get_current_episode_size(self):

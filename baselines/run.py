@@ -234,13 +234,14 @@ def main(args):
             print(info)
             env.render()
             i +=1 
+            
             if info[0]['is_success']:
                 print('Done in ', i, ' step')
-                break
+              #  break
             done = done.any() if isinstance(done, np.ndarray) else done
 
 
-            if done:
+            if info[0]['is_success']:
                 obs = env.reset()
 
         env.close()
